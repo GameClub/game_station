@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Six dots</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<style type="text/css">
+		#usrWrap {
+            text-align: center;
+			display: block;
+            margin: auto;
+            margin-top: 200px;
+		}
+		#errorMsg {
+			display: none;
+		}
+		#chatWrap {
+            padding: 25px;
+            width: 40%;
+			display: none;
+            text-align: center;
+		}
+		#heading {
+            display: none;
+            text-align: center;
+        }
+        #msgs {
+            padding: 25px;
+            text-align: left;
+			width:100%;
+			background-color: #e0d9d9;
+			height: 400px;
+		}
+		#svg {
+			width: 500px;
+			height: 500px;
+			margin-top: 50px;
+            text-align: center;
+			display: none;
+			float: right;
+            margin-right: 100px;
+            border: 3px solid;
+            pointer-events: none;
+		}
+		.lines {
+			cursor: pointer;
+			stroke: gray;
+			stroke-width: 2;
+		}
+		.lines:hover {
+			stroke: black;
+			stroke-width:10;
+		}
+		#boardmsg {
+			display: none;
+			text-align: center;
+			color: red;
+		}
+	</style>
+</head>
+<body onload="init()">
+	<div id="usrWrap">
+		<h4>Enter user name: </h4>
+		<h5 id="errorMsg">Username allready taken, try another username</h5>
+		<input type="text" id="usr">
+		<button id="enterRoom">Enter room</button>
+	</div>
+
+    <h2 id="heading">Six Dots</h2>
+
+	<!-- <canvas id="canvas">
+		
+	</canvas> -->
+
+	<p id="boardmsg">waiting for a player to connect...</p>
+	<svg id="svg" height="500" width="600"></svg>
+		
+		
+    <div id="chatWrap">
+        <h4 id="room"></h4>
+        <div id="msgs"></div>
+        <input type="text" style="width: 75%; float: left;" id="msg">
+        <button id="sendMsg" style="width: 25%;">Send</button>
+    </div>
+
+    <!-- <button onclick="addNodes()">print graph</button> -->
+
+    <script type="text/javascript" src="/games/jquery"></script>
+	<script src = "/socket.io/socket.io.js"></script>
+    <script type="text/javascript">
+    	
+    	var $errorMsg = $('#errorMsg');
+    	var $enterRoom = $('#enterRoom');
+    	var $username = $('#usr');
+    	var $usrWrap = $('#usrWrap');
+    	var $chatWrap = $('#chatWrap');
+    	var $room = $('#room');
+    	var $sendMsg = $('#sendMsg');
+    	var $msg = $('#msg');
+    	var $msgs = $('#msgs');
+    	var $boardmsg = $('#boardmsg');
+
+    	var roomID;
+
+    	var socket = io('/sdots');
+    	var svg = document.getElementById('svg');
+
+    	class Graph {
+    		constructor(num) {
+    			this.noOfNodes = num;
+    			this.AdjList = new Map();
+    		}
+
+    		addNodes(n) {
+    			//console.log('hello');
+    			this.AdjList.set(n, []);
+    		}
+
+    		addEdge(n1, n2) {
+    			//console.log(this.AdjList.get(n1));
+    			this.AdjList.get(n1).push(n2);
+    			this.AdjList.get(n2).push(n1);
+    			//console.log(this.AdjList.get(n1));
+    		}
+
+    		printGraph() {
+    			var keys = this.AdjList.keys();
+    			//console.log(this.AdjList);
+    			for (var i of keys) {
+    				var values = this.AdjList.get(i);
+    				var conn = "";
+    				for (var j of values) {
+    					conn += j + " ";
+    				}
+    				console.log(i + " -> " + conn);
+    			}
+    		}
+
+    		clearGraph() {
+    			this.AdjList.clear();
+    			// for (var i=0; i<19; i++) {
+	    		// 	g.addNodes(i);
+	    		// }
+    		}
+    	}
+
+    	var g = new Graph(19);
+
+    	function init() {
+    		var mainDots = [
+    			[0,200],
+    			[-200*Math.cos(Math.PI/6),100],
+    			[-200*Math.cos(Math.PI/6),-100],
+    			[0,-200],
+    			[200*Math.cos(Math.PI/6),-100],
+    			[200*Math.cos(Math.PI/6),100]
+    		];
+    		var lines = "";
+    		var circles = "";
+
+    		for (var i = 0; i < 6; i++) {
+    			for (var j = i+1; j < 6; j++) {
+    				lines = lines + "<line onclick='played(this.id)' id='line"+i+j+"' class='lines' x1="+(mainDots[i][0]+250)+" y1="+(mainDots[i][1]+250)+" x2="+(mainDots[j][0]+250)+" y2="+(mainDots[j][1]+250)+" style=''/>";
+    			}
+    		}
+
+    		for (var i = 0; i < 6; i++) {
+    			circles = circles + "<circle class='circles' cx="+(mainDots[i][0]+250)+" cy="+(mainDots[i][1]+250)+" r='5'/>";
+    		}
+    		svg.innerHTML = lines + circles;
+
+    		// initiaize the graph
+    		
+    		for (var i=0; i<19; i++) {
+    			g.addNodes(i);
+    		}
+
+    	}
+
+    	function insertEdges(obje) {
+    		for (var i=0; i<obje.length; i++) {
+    			for (var j=i+1; j<obje.length; j++) {
+    				g.addEdge(obje[i], obje[j]);
+    			}
+    		}
+    	}
+
+    	function updateGraph(pair) {
+    		console.log(pair);
+    		switch (pair) {
+    			// from 0
+    			case '01':
+    				insertEdges([0,1]);
+    				break;
+    			case '02':
+    				insertEdges([0,2,7,8,9]);
+    				break;
+    			case '03':
+    				insertEdges([0,3,6,12,18]);
+    				break;
+    			case '04':
+    				insertEdges([0,4,15,16,17]);
+    				break;
+    			case '05':
+    				insertEdges([0,5]);
+    				break;
+    			
+    			// from 1
+    			case '12':
+    				insertEdges([1,2]);
+    				break;
+    			case '13':
+    				insertEdges([1,3,9,10,11]);
+    				break;
+    			case '14':
+    				insertEdges([1,4,8,14,18]);
+    				break;
+    			case '15':
+    				insertEdges([1,5,6,7,17]);
+    				break;
+    			
+    			// from 2
+    			case '23':
+    				insertEdges([2,3]);
+    				break;
+    			case '24':
+    				insertEdges([2,4,11,12,13]);
+    				break;
+    			case '25':
+    				insertEdges([2,5,10,16,18]);
+    				break;
+    			
+    			// from 3
+    			case '34':
+    				insertEdges([3,4]);
+    				break;
+    			case '35':
+    				insertEdges([3,5,13,14,15]);
+    				break;
+    			
+    			// from 4
+    			case '45':
+    				insertEdges([4,5]);
+    				break;
+
+    			default:
+    				break;
+    		}
+    	}
+
+    	function noSameLine (nd1, nd2, nd3) {
+    		var linenodes = [[0,2,7,8,9], [0,3,6,12,18], [0,4,15,16,17], [1,3,9,10,11], [1,4,8,14,18], [1,5,6,7,17], [2,4,11,12,13], [2,5,10,16,18], [3,5,13,14,15]];
+    		for (x=0; x<9; x++) {
+    			if (linenodes[x].includes(nd1) && linenodes[x].includes(nd2) && linenodes[x].includes(nd3)) {
+    				return false;
+    			}
+    		}
+    		return true;
+    	}
+
+    	function checkCycle() {
+
+    		for (var i=0; i<19; i++) {
+    			var ori = i;
+    			var seconds = g.AdjList.get(i);
+    			//console.log(seconds);
+    			for (var j=0; j<seconds.length; j++) {
+    				if (j != ori) {
+    					var thirds = g.AdjList.get(seconds[j]);
+	    				//console.log(thirds);
+	    				for (var k=0; k<thirds.length; k++) {
+
+	    					if(g.AdjList.get(thirds[k]).includes(ori) && thirds[k]!=seconds[j] && thirds[k]!=ori && seconds[j]!=ori && noSameLine(ori,seconds[j],thirds[k])) {
+	    						console.log(ori, seconds[j], thirds[k]);
+	    			// 			for (var x=0; x<9; x++) {
+		    		// 				if(linenodes[x].includes(ori) && linenodes[x].includes(seconds[j]) && linenodes[x].includes(thirds[k])) {
+								// 		console.log('same line...');
+								// 		return true;
+								// 	}
+								// }
+								return true;
+		    				}
+		    			}
+    				}
+    			}
+    		}
+    		
+    		return false;
+    	}
+
+    	function restartGame() {
+    		// for(var i=0; i<6; i++) {
+    		// 	for(var j=i+1; j<6; j++){
+    		// 		document.getElementById('line'+i+j).style.stroke = 'gray';
+		    // 		document.getElementById('line'+i+j).style.strokeWidth = '2';
+		    // 		document.getElementById('line'+i+j).style.pointerEvents = 'auto';
+    		// 	}
+    		// }
+    		g.clearGraph();
+    		init();
+    		makeClickable();
+    	}
+
+    	function played(id) {
+    		//console.log(id);
+    		updateGraph(id.charAt(4)+id.charAt(5));
+    		socket.emit('blue line clicked', {roomID: roomID, id: id});
+    		if(checkCycle()) {
+    			socket.emit('say loose', roomID);
+    		}
+    		makeUnclickable();
+    		document.getElementById(id).style.stroke = 'blue';
+    		document.getElementById(id).style.strokeWidth = '5';
+    		document.getElementById(id).style.pointerEvents = 'none';
+    		
+    		if(checkCycle()) {
+    			alert("you made a triangle! You LOOSE");
+    			restartGame();
+    		}
+
+    	}
+
+    	function addNodes() {
+    		g.printGraph();
+    		console.log('graph is: ');
+    	}
+
+    	function makeClickable() {
+    		svg.style.pointerEvents = 'auto';
+    		$boardmsg.html('play your move!');
+    		$boardmsg.css('color', 'green');
+    	}
+
+    	function makeUnclickable () {
+    		svg.style.pointerEvents = 'none';
+    		$boardmsg.html('wait, opponent move!');
+    		$boardmsg.css('color', 'red');
+    	}
+
+    	$enterRoom.click(function() {
+			//console.log("username is: " + $username.val());
+			socket.emit('new user', $username.val(), function(err, status) {
+				if (err) {
+					svg.style.display = 'block';
+					$usrWrap.hide();
+					$boardmsg.show();
+					$chatWrap.show('slow');
+                    $('#heading').show();
+                    if (status == 2) {
+                        makeClickable();
+                        console.log("im here...");
+                        $boardmsg.html("start the game!!");
+                        $boardmsg.css('color', 'green');
+                    }
+				} else {
+					$errorMsg.show('slow');
+					$('#usr').val("");
+				}
+			});
+		});
+
+		socket.on('room name', function(roomname) {
+			roomID = roomname;
+			$room.html("Your room name: " + roomname);
+		});
+
+		socket.on('player left', function(data) {
+            alert("opponent left the room! page will refresh now.");
+            window.location.reload();
+        });
+
+        socket.on('recieve personal', function(massageee) {
+			$msgs.append("<b>" + massageee.usr+": </b>" + massageee.msg + "<br/>");
+		});
+
+		socket.on('update red', function(id) {
+			document.getElementById(id).style.stroke = 'red';
+    		document.getElementById(id).style.strokeWidth = '5';
+    		document.getElementById(id).style.pointerEvents = 'none';
+    		makeClickable();
+		});
+
+		socket.on('you win', function() {
+			alert('opponent made a triangle! You WIN');
+			restartGame();
+		});
+
+        $sendMsg.click(function() {
+			var msg = $msg.val();
+			socket.emit('personal', {msg: msg, roomID: roomID});
+			$msgs.append("<b>you: </b>" + msg + "<br/>");
+			$msg.val("");
+		});
+
+    </script>
+</body>
+</html>

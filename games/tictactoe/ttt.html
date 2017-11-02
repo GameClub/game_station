@@ -1,0 +1,71 @@
+h<tml>
+<head>
+    <title>ttt</title>
+    <style type="text/css">
+        #board {
+            width: 400px;;
+            margin-right: auto;
+            margin-left: auto;
+        }
+        #ninebynine {
+            margin-right: auto;
+            margin-left: auto;
+        }
+        .checks {
+            text-align: center;
+            width: 100px;
+            height: 100px;
+        }
+    </style>
+</head>
+<script src = "/socket.io/socket.io.js"></script>
+
+<body>
+    <div id="board">
+        <table border="2" id="ninebynine">
+            <tr>
+                <td id="1" class="checks" onclick="fillcheck(this.id)"></td>
+                <td id="2" class="checks" onclick="fillcheck(this.id)"></td>
+                <td id="3" class="checks" onclick="fillcheck(this.id)"></td>
+            </tr>
+            <tr>
+                <td id="4" class="checks" onclick="fillcheck(this.id)"></td>
+                <td id="5" class="checks" onclick="fillcheck(this.id)"></td>
+                <td id="6" class="checks" onclick="fillcheck(this.id)"></td>
+            </tr>
+            <tr>
+                <td id="7" class="checks" onclick="fillcheck(this.id)"></td>
+                <td id="8" class="checks" onclick="fillcheck(this.id)"></td>
+                <td id="9" class="checks" onclick="fillcheck(this.id)"></td>
+            </tr>
+        </table>
+        <button onclick="makeClickable()">clcik me</button>
+    </div>
+    
+    <script type="text/javascript">
+        var socket = io();
+        var checks = Array();
+        var gameArray = [0,0,0,0,0,0,0,0,0];
+        var ninebynine = document.getElementById('ninebynine');
+        for(var i=1; i<10; i++) {
+            checks[i-1] = document.getElementById(i);
+        }
+        
+        function makeUnclickable() {
+            ninebynine.style.pointerEvents = 'none';
+        }
+        function makeClickable() {
+            ninebynine.style.pointerEvents = 'auto';
+        }
+        
+        function fillcheck(id) {
+            checks[id-1].innerHTML = "X";
+            checks[id-1].style.pointerEvents = 'none';
+            gameArray[id-1] = 1;
+            console.log(gameArray);
+            makeUnclickable();
+        }
+        
+    </script>
+</body>
+</html>

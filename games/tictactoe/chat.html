@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Tic Tac Toe</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<style type="text/css">
+		#usrWrap {
+            text-align: center;
+			display: block;
+            margin: auto;
+            margin-top: 200px;
+		}
+		#chatWrap {
+            padding: 25px;
+            width: 40%;
+			display: none;
+            text-align: center;
+		}
+		#errorMsg {
+			display: none;
+		}
+		#msgs {
+            padding: 25px;
+            text-align: left;
+			width:100%;
+			background-color: #e0d9d9;
+			height: 400px;
+		}
+		#board {
+            margin-top: 50px;
+            text-align: center;
+			display: none;
+			float: right;
+            width: 60%;
+            margin-right: auto;
+            margin-left: auto;
+        }
+        #ninebynine {
+            margin-right: auto;
+            margin-left: auto;
+            pointer-events: none;
+        }
+        .checks {
+            font-size: 35px;
+            text-align: center;
+            width: 100px;
+            height: 100px;
+        }
+        #heading {
+            display: none;
+            text-align: center;
+        }
+        #score {
+            padding: 25px;
+        }
+
+	</style>
+</head>
+<body>
+	<div id="usrWrap">
+		<h4>Enter user name: </h4>
+		<h5 id="errorMsg">Username allready taken, try another username</h5>
+		<input type="text" id="usr">
+		<button id="enterRoom">Enter room</button>
+	</div>
+
+    <h2 id="heading">TIC TAC TOE</h2>
+
+	<div id="board">
+        <h5 id="boardmsg" style="color: red">Waiting for a player to join...</h5>
+        <table border="2" id="ninebynine">
+            <tr>
+                <td id="1" class="checks" onclick="fillcheck(this.id)"></td>
+                <td id="2" class="checks" onclick="fillcheck(this.id)"></td>
+                <td id="3" class="checks" onclick="fillcheck(this.id)"></td>
+            </tr>
+            <tr>
+                <td id="4" class="checks" onclick="fillcheck(this.id)"></td>
+                <td id="5" class="checks" onclick="fillcheck(this.id)"></td>
+                <td id="6" class="checks" onclick="fillcheck(this.id)"></td>
+            </tr>
+            <tr>
+                <td id="7" class="checks" onclick="fillcheck(this.id)"></td>
+                <td id="8" class="checks" onclick="fillcheck(this.id)"></td>
+                <td id="9" class="checks" onclick="fillcheck(this.id)"></td>
+            </tr>
+        </table>
+        <p id="score">score:</p>
+    </div>
+
+    <div id="chatWrap">
+        <h4 id="room"></h4>
+        <div id="msgs"></div>
+        <input type="text" style="width: 75%; float: left;" id="msg">
+        <button id="sendMsg" style="width: 25%;">Send</button>
+    </div>
+
+	<script type="text/javascript" src="jquery"></script>
+	<script src = "/socket.io/socket.io.js"></script>
+	<script type="text/javascript">
+		var $usrWrap = $('#usrWrap');
+		var $errorMsg = $('#errorMsg');
+		var $username = $('#usr');
+		var $enterRoom = $('#enterRoom');
+
+		var $chatWrap = $('#chatWrap');
+		var $room = $('#room');
+		var $msgs = $('#msgs');
+		var $msg = $('#msg');
+		var $sendMsg = $('#sendMsg');
+
+		var $board = $('#board');
+        var $boardmsg = $('#boardmsg');
+		var ninebynine = document.getElementById('ninebynine');
+		//var ninebynine = $('#ninebynine');
+		var socket = io('/ttt');
+		var roomID;
+        var moves = 0;
+        var totWins = 0;
+        var totLoose = 0;
+
+        //makeUnclickable();
+
+		$enterRoom.click(function() {
+			//console.log("username is: " + $username.val());
+			socket.emit('new user', $username.val(), function(err, status) {
+				if (err) {
+					$board.show('slow');
+					$usrWrap.hide();
+					$chatWrap.show('slow');
+                    $('#heading').show();
+                    if (status == 2) {
+                        makeClickable();
+                        console.log("im here...");
+                        $boardmsg.html("start the game!!");
+                        $boardmsg.css('color', 'green');
+                    }
+				} else {
+					$errorMsg.show('slow');
+					$('#usr').val("");
+				}
+			});
+		});
+
+		var checks = Array();
+        for(var i=1; i<10; i++) {
+            checks[i-1] = document.getElementById(i);
+        }
+
+        function makeUnclickable() {
+            //ninebynine.unbind("click");
+            ninebynine.style.pointerEvents = 'none';
+            $boardmsg.html("wait!! opponent move");
+            $boardmsg.css('color', 'red');
+        }
+        function makeClickable() {
+            ninebynine.style.pointerEvents = 'auto';
+            $boardmsg.html("your move!");
+            $boardmsg.css('color', 'green');
+        }
+        
+        function fillcheck(id) {
+            var reset = 0;
+            checks[id-1].innerHTML = "X";
+            moves++;
+            checks[id-1].style.pointerEvents = 'none';
+            if(win(id-1)) {
+            	socket.emit('say loose', {id: id, roomID: roomID});
+            	alert("you win!!");
+                totWins++;
+                reset = 1;
+            } else if (moves >= 9) {
+                socket.emit('draw', {room: roomID, id: id});
+                alert("draw!!");
+                reset = 1;
+            }
+            
+            if (reset == 1) {
+                restartGame();
+                reset = 0;
+            } else {
+                socket.emit('clicked check', {id: id, roomID: roomID});
+                makeUnclickable();
+            }
+
+        }
+
+        function restartGame() {
+            for(var i=0; i<9; i++) {
+                checks[i].innerHTML = "";
+                checks[i].style.pointerEvents = 'auto';
+            }
+            moves = 0;
+            var score = document.getElementById('score').innerHTML = 'Wins: '+totWins+' Loose: '+totLoose;
+            makeClickable();
+        }
+
+        function win(id) {
+        	var diag = false;
+        	var col = id%3;
+        	var row = id<3?0:id<6?1:2;
+        	var cnt = 0;
+        	var idx;
+        	if(id%2 == 0) 
+        		diag = true;
+        	idx = id;
+        	for(var i=0;i<3;i++) {
+        		if(checks[idx].innerHTML === 'X') {
+        			cnt++;
+        		}
+        		idx = (idx+1)%3+row*3;
+        	}
+        	if(cnt == 3) 
+        		return true;
+        	idx = id;
+        	cnt = 0;
+        	for(var i=0;i<3;i++) {
+        		if(checks[idx].innerHTML === 'X') {
+        			cnt++;
+        		}
+        		idx = (idx+3)%9;
+        	}
+        	if(cnt == 3) 
+        		return true;
+        	if(diag == true) {
+        		if(checks[0].innerHTML == 'X' && checks[4].innerHTML == 'X' && checks[8].innerHTML == 'X')
+        			return true;
+        		if(checks[2].innerHTML == 'X' && checks[4].innerHTML == 'X' && checks[6].innerHTML == 'X')
+        			return true;
+        	}
+        	return false;
+        }
+
+        socket.on('loose', function(id) {
+            checks[id-1].innerHTML = "O";
+            moves++;
+        	alert('you loose!!');
+            totLoose++;
+            restartGame();
+            console.log("this one... from loose ");
+        });
+
+        socket.on('oposite check', function(id) {
+        	checks[id-1].innerHTML = "O";
+            moves++;
+        	checks[id-1].style.pointerEvents = 'none';
+        	makeClickable();
+            console.log("this one... ");
+        });
+
+		socket.on('room name', function(roomname) {
+			roomID = roomname;
+			$room.html("Your room name: " + roomname);
+		});
+
+		$sendMsg.click(function() {
+			var msg = $msg.val();
+			socket.emit('personal', {msg: msg, roomID: roomID});
+			$msgs.append("<b>you: </b>" + msg + "<br/>");
+			$msg.val("");
+		});
+
+		socket.on('recieve personal', function(massageee) {
+			$msgs.append("<b>" + massageee.usr+": </b>" + massageee.msg + "<br/>");
+		});
+
+        socket.on('player left', function(data) {
+            alert("opponent left the room! page will refresh now.");
+            window.location.reload();
+        });
+
+        socket.on('say draw', function(id) {
+            checks[id-1].innerHTML = "O";
+            alert('draw!!!');
+            restartGame();
+        });
+
+	</script>
+</body>
+</html>
