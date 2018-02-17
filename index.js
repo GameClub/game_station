@@ -4,6 +4,7 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var users = [];
 var morgan = require('morgan');
+const PORT = process.env.PORT || 5000
 
 app.use(morgan('dev'));
 
@@ -202,9 +203,9 @@ nsp2.on('connection', function(socket) {
     });
 });
 
-http.listen(2222, function(err) {
-	if (err)
-		console.log(err);
+http.listen(PORT, function(err) {
+    if (err)
+        console.log(err);
     else 
-        console.log("server running on port 2222");
+        console.log(`server running on port ${PORT}`);
 });
